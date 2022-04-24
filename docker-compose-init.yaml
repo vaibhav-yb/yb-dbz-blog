@@ -1,0 +1,156 @@
+version: '1'
+
+services:
+  zookeeper:
+    image: debezium/zookeeper:1.6
+    user: "0:0"
+    ports:
+      - "2181:2181"
+    # volumes:
+    #   - "./mnt/zookeeper0/conf:/zookeeper/conf"
+    #   - "./mnt/zookeeper0/data:/zookeeper/data"
+    #   - "./mnt/zookeeper0/logs:/zookeeper/logs"
+    #   - "./mnt/zookeeper0/txns:/zookeeper/txns"
+    # healthcheck:
+    #   test: /zookeeper/bin/zkServer.sh print-cmd || exit 1
+    #   interval: 1m
+    #   timeout: 15s
+    #   retries: 3
+    #   start_period: 15s
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+
+  kafka:
+    image: debezium/kafka:1.6
+    depends_on: [ zookeeper ]
+    user: "0:0"
+    ports:
+      - 9092:9092
+      - 9099:9099
+    # volumes:
+    #   - ./mnt/kafka0/data:/kafka/data
+    #   - ./mnt/kafka0/logs:/kafka/logs
+    # healthcheck:
+    #   test: unset JMX_PORT; /kafka/bin/kafka-topics.sh --list --zookeeper zookeeper0:2181 || exit 1
+    #   interval: 1m
+    #   timeout: 15s
+    #   retries: 3
+    #   start_period: 15s
+    restart: unless-stopped
+    environment:
+      KAFKA_CFG_BROKER_ID: 100
+      ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_CFG_LISTENERS: "CLIENT://:9093,EXTERNAL://:9092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://:9093,EXTERNAL://kafka:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: CLIENT
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_OPTS: -Djdk.tls.client.protocols=TLSv1.2
+  
+  kafka-connect-yb-dbz:
+    image: quay.io/yugabyte/debezium-connector:1.3.2-BETA
+    depends_on: [ kafka, yb-tserver ]
+    # volumes:
+    #   - ./mnt/connect0/kafka/connect/debezium-connector-yugabytedb:/kafka/connect/debezium-connector-yugabytedb
+    ports:
+      - 8083:8083
+    # healthcheck:
+    #   test: curl --fail http://kafka-connect0:8083 || exit 1
+    #   interval: 1m
+    #   timeout: 15s
+    #   retries: 3
+    #   start_period: 15s
+    restart: unless-stopped
+    environment:
+      BOOTSTRAP_SERVERS: "kafka:9092"
+      GROUP_ID: kafka-connect-group
+      CONFIG_STORAGE_TOPIC: kafka-connect_configs
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_TOPIC: kafka-connect_offset
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_TOPIC: kafka-connect_status
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_REST_PORT: 8083
+  
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8079:8080
+    depends_on:
+      - zookeeper
+      - kafka
+      - kafka-connect
+    # healthcheck:
+    #   test: wget -nv -t1 --spider 'http://kafka-ui:8080/actuator/health' || exit 1
+    #   interval: 1m
+    #   timeout: 15s
+    #   retries: 3
+    #   start_period: 15s
+    restart: unless-stopped
+    environment:
+      KAFKA_CLUSTERS_0_NAME: debezium-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:9092"
+      KAFKA_CLUSTERS_0_ZOOKEEPER: "zookeeper:2181"
+      KAFKA_CLUSTERS_0_JMXPORT: 9099
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: kafka-connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+  
+  yb-master:
+    image: quay.io/yugabyte/yugabyte:2.12.2.0-b58 # todo vaibhav: need to decide if I should go with this
+    container_name: yb-master
+    # volumes:
+    #   - ./mnt/yugabyte/yb-master-data-1:/mnt/master
+    command:
+      [
+        "/home/yugabyte/bin/yb-master",
+        "--fs_data_dirs=/mnt/master",
+        "--master_addresses=yb-master:7100",
+        "--rpc_bind_addresses=yb-master:7100",
+        "--replication_factor=1"
+      ]
+    ports:
+      - "7000:7000"
+      - "7100:7100"
+    environment:
+      - SERVICE_7000_NAME=yb-master
+
+  yb-tserver:
+    image: quay.io/yugabyte/yugabyte:2.12.2.0-b58
+    container_name: yb-tserver
+    depends_on:
+      - yb-master
+    # volumes:
+    #   - ./mnt/yugabyte/yb-tserver-data-1:/mnt/tserver
+    command:
+      [
+        "/home/yugabyte/bin/yb-tserver",
+        "--fs_data_dirs=/mnt/tserver",
+        "--start_pgsql_proxy",
+        "--rpc_bind_addresses=yb-tserver:9100",
+        "--tserver_master_addrs=yb-master:7100"
+      ]
+    ports:
+      - "9042:9042"
+      - "5433:5433"
+      - "9000:9000"
+    environment:
+      - SERVICE_5433_NAME=ysql
+      - SERVICE_9042_NAME=ycql
+      - SERVICE_6379_NAME=yedis
+      - SERVICE_9000_NAME=yb-tserver
+  
+  postgresql:
+    container_name: postgres
+    image: debezium/example-postgres:1.6
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER: postgres
+      - POSTGRES_PASSWORD: postgres
