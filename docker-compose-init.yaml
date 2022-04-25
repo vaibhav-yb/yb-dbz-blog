@@ -25,7 +25,8 @@ services:
   kafka:
     container_name: kafka
     image: debezium/kafka:1.6
-    depends_on: [ zookeeper ]
+    links:
+      - zookeeper
     user: "0:0"
     ports:
       - 9092:9092
@@ -56,7 +57,12 @@ services:
   kafka-connect:
     container_name: kafka-connect
     image: yb-test-connector #quay.io/yugabyte/debezium-connector:1.3.2-BETA
-    depends_on: [ kafka, yb-tserver, pg, elastic ]
+    links:
+      - kafka
+      - pg
+      - elastic
+      - yb-tserver
+    # depends_on: [ kafka, yb-tserver, pg, elastic ]
     # volumes:
     #   - ./mnt/connect0/kafka/connect/debezium-connector-yugabytedb:/kafka/connect/debezium-connector-yugabytedb
     ports:
@@ -85,7 +91,7 @@ services:
     image: provectuslabs/kafka-ui:latest
     ports:
       - 8079:8080
-    depends_on:
+    links: #depends_on:
       - zookeeper
       - kafka
       - kafka-connect
@@ -126,7 +132,7 @@ services:
   yb-tserver:
     image: quay.io/yugabyte/yugabyte:2.12.2.0-b58
     container_name: yb-tserver
-    depends_on:
+    links: #depends_on:
       - yb-master
     # volumes:
     #   - ./mnt/yugabyte/yb-tserver-data-1:/mnt/tserver
