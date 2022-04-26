@@ -5,17 +5,8 @@ services:
     user: "0:0"
     ports:
       - 2181:2181
-    # volumes:
-    #   - "./mnt/zookeeper0/conf:/zookeeper/conf"
-    #   - "./mnt/zookeeper0/data:/zookeeper/data"
-    #   - "./mnt/zookeeper0/logs:/zookeeper/logs"
-    #   - "./mnt/zookeeper0/txns:/zookeeper/txns"
-    # healthcheck:
-    #   test: /zookeeper/bin/zkServer.sh print-cmd || exit 1
-    #   interval: 1m
-    #   timeout: 15s
-    #   retries: 3
-    #   start_period: 15s
+      - 2888:2888
+      - 3888:3888
     restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -31,15 +22,6 @@ services:
     ports:
       - 9092:9092
       - 9099:9099
-    # volumes:
-    #   - ./mnt/kafka0/data:/kafka/data
-    #   - ./mnt/kafka0/logs:/kafka/logs
-    # healthcheck:
-    #   test: unset JMX_PORT; /kafka/bin/kafka-topics.sh --list --zookeeper zookeeper0:2181 || exit 1
-    #   interval: 1m
-    #   timeout: 15s
-    #   retries: 3
-    #   start_period: 15s
     restart: unless-stopped
     environment:
       KAFKA_CFG_BROKER_ID: 100
@@ -57,22 +39,9 @@ services:
   kafka-connect:
     container_name: kafka-connect
     image: yb-test-connector #quay.io/yugabyte/debezium-connector:1.3.2-BETA
-    links:
-      - kafka
-      - pg
-      - elastic
-      - yb-tserver
-    # depends_on: [ kafka, yb-tserver, pg, elastic ]
-    # volumes:
-    #   - ./mnt/connect0/kafka/connect/debezium-connector-yugabytedb:/kafka/connect/debezium-connector-yugabytedb
+    depends_on: [ kafka, yb-tserver, pg, elastic ]
     ports:
       - 8083:8083
-    # healthcheck:
-    #   test: curl --fail http://kafka-connect0:8083 || exit 1
-    #   interval: 1m
-    #   timeout: 15s
-    #   retries: 3
-    #   start_period: 15s
     restart: unless-stopped
     environment:
       BOOTSTRAP_SERVERS: "kafka:9092"
@@ -91,16 +60,10 @@ services:
     image: provectuslabs/kafka-ui:latest
     ports:
       - 8079:8080
-    links: #depends_on:
+    depends_on:
       - zookeeper
       - kafka
       - kafka-connect
-    # healthcheck:
-    #   test: wget -nv -t1 --spider 'http://kafka-ui:8080/actuator/health' || exit 1
-    #   interval: 1m
-    #   timeout: 15s
-    #   retries: 3
-    #   start_period: 15s
     restart: unless-stopped
     environment:
       KAFKA_CLUSTERS_0_NAME: debezium-local
@@ -113,8 +76,6 @@ services:
   yb-master:
     image: quay.io/yugabyte/yugabyte:2.12.2.0-b58 # todo vaibhav: need to decide if I should go with this
     container_name: yb-master
-    # volumes:
-    #   - ./mnt/yugabyte/yb-master-data-1:/mnt/master
     command:
       [
         "/home/yugabyte/bin/yb-master",
@@ -132,10 +93,8 @@ services:
   yb-tserver:
     image: quay.io/yugabyte/yugabyte:2.12.2.0-b58
     container_name: yb-tserver
-    links: #depends_on:
+    depends_on:
       - yb-master
-    # volumes:
-    #   - ./mnt/yugabyte/yb-tserver-data-1:/mnt/tserver
     command:
       [
         "/home/yugabyte/bin/yb-tserver",
@@ -167,9 +126,20 @@ services:
     container_name: elastic
     image: docker.elastic.co/elasticsearch/elasticsearch:8.1.3
     ports:
-     - 9200:9200
+      - 9200:9200
+    restart: unless-stopped
     environment:
-     - http.host=0.0.0.0
-     - transport.host=127.0.0.1
-     - xpack.security.enabled=false
-     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - http.host=0.0.0.0
+      - transport.host=127.0.0.1
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  
+  mysql:
+    container_name: mysql
+    image: debezium/example-mysql:1.6
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=debezium
+      - MYSQL_USER=mysqluser
+      - MYSQL_PASSWORD=mysqlpw

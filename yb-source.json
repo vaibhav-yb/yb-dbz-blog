@@ -1,0 +1,17 @@
+{
+  "name": "ybconnector",
+  "config": {
+    "tasks.max":"1",
+    "connector.class": "io.debezium.connector.yugabytedb.YugabyteDBConnector",
+    "database.hostname":"192.168.12.100",
+    "database.master.addresses":"192.168.12.100:7100",
+    "database.port":"5433",
+    "database.user": "yugabyte",
+    "database.password":"yugabyte",
+    "database.dbname":"yugabyte",
+    "database.server.name": "dbserver1",
+    "snapshot.mode":"never",
+    "database.streamid":"47d9b79e1c6d48e282a2df1f285f26dc",
+    "table.include.list":"public.demo"
+  }
+}
