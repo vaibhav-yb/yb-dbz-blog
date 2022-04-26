@@ -38,8 +38,8 @@ services:
   
   kafka-connect:
     container_name: kafka-connect
-    image: quay.io/vaibhav_yb/test_repo:0.7
-    depends_on: [ kafka, yb-tserver, pg, elastic ]
+    image: quay.io/yugabyte/connect-jdbc-es:1.0
+    depends_on: [ kafka, yb-tserver, pg, elastic, mysql ]
     ports:
       - 8083:8083
     restart: unless-stopped
