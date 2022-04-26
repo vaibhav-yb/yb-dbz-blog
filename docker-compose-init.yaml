@@ -38,7 +38,7 @@ services:
   
   kafka-connect:
     container_name: kafka-connect
-    image: yb-test-connector #quay.io/yugabyte/debezium-connector:1.3.2-BETA
+    image: quay.io/vaibhav_yb/test_repo:0.7
     depends_on: [ kafka, yb-tserver, pg, elastic ]
     ports:
       - 8083:8083
@@ -74,7 +74,7 @@ services:
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
   
   yb-master:
-    image: quay.io/yugabyte/yugabyte:2.12.2.0-b58 # todo vaibhav: need to decide if I should go with this
+    image: yugabytedb/yugabyte:2.13.1.0-b112
     container_name: yb-master
     command:
       [
@@ -91,7 +91,7 @@ services:
       - SERVICE_7000_NAME=yb-master
 
   yb-tserver:
-    image: quay.io/yugabyte/yugabyte:2.12.2.0-b58
+    image: yugabytedb/yugabyte:2.13.1.0-b112
     container_name: yb-tserver
     depends_on:
       - yb-master
