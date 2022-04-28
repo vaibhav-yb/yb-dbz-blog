@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag connect-jdbc-es:$(date +%s)
+      run: docker build . --file connect-jdbc-es/Dockerfile --tag connect-jdbc-es:$(date +%s)
