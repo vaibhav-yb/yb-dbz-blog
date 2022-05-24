@@ -33,9 +33,11 @@
 
 ---
 
-### Step 4 - create a CDC stream and save the stream_id returned
+### Step 4 - create a CDC stream and update the yb-source.json with the stream id returned
 
-```	docker exec -it yb-master bash -c "yb-admin --master_addresses yb-master create_change_data_stream ysql.yugabyte"```
+```cdc=$(docker exec -it yb-master bash -c "yb-admin --master_addresses yb-master create_change_data_stream ysql.yugabyte")```
+```stream_id=$(echo $cdc | cut -d: -f2 | sed 's/ //g')```
+```sed "s/<insert_your_cdc_stream_id_here>/$stream_id/g" yb-source.json >temp.json    mv temp.json yb-source.json```
 
 ---
 
