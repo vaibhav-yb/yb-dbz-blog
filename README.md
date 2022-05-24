@@ -85,3 +85,10 @@
 ```curl 'localhost:9200/dbserver1.public.demo/_search?pretty'```
 
 ---
+
+### Step 9 - Shut down the containers
+
+```
+docker-compose -f docker-compose-init.yaml down
+
+```
