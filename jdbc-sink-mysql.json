@@ -1,12 +1,12 @@
 {
-  "name": "jdbc-sink-mysql",
+  "name": "jdbc-sink-mysql2",
   "config": {
     "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",    
      "tasks.max": "1",
       "topics": "dbserver1.public.demo",
       "dialect.name": "MySqlDatabaseDialect",    
-      "table.name.format": "test",
-      "connection.url": "jdbc:mysql://mysql:3306/test_api?user=mysqluser&password=mysqlpw&sslMode=required",    
+      "table.name.format": "demo",
+      "connection.url": "jdbc:mysql://mysql:3306/mysql?user=root&password=debezium&sslMode=required",    
       "transforms": "unwrap",    
       "transforms.unwrap.type": "io.debezium.connector.yugabytedb.transforms.YBExtractNewRecordState",    
       "transforms.unwrap.drop.tombstones": "false",
