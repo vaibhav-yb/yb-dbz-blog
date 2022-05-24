@@ -11,7 +11,7 @@
     "database.dbname":"yugabyte",
     "database.server.name": "dbserver1",
     "snapshot.mode":"never",
-    "database.streamid":"8f87cd4102374b908a53542bb5757cef",
+    "database.streamid":"<insert_your_cdc_stream_id_here>",
     "table.include.list":"public.demo"
   }
 }
