@@ -35,9 +35,10 @@ docker-compose -f docker-compose-init.yaml up -d --force-recreate
 
 ```
 
-docker exec -it yb-tserver bash -c "ysqlsh -h yb-tserver"
-
+docker exec -it yb-tserver bash -c "ysqlsh -h yb-tserver<<EOF
 create table demo ( id int primary key, name text, email varchar(100)) ;
+\q
+EOF"
 
 ```
 
@@ -50,7 +51,7 @@ create table demo ( id int primary key, name text, email varchar(100)) ;
 cdc=$(docker exec -it yb-master bash -c "yb-admin --master_addresses yb-master create_change_data_stream ysql.yugabyte")
 
 
-stream_id=$(echo $cdc | cut -d: -f2 | sed 's/ //g')
+stream_id=$(echo $cdc | cut -d: -f2 | tr -d ' \r' )
 
 
 sed "s/<insert_your_cdc_stream_id_here>/$stream_id/g" yb-source.json >temp.json
@@ -90,21 +91,23 @@ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" 
 
 ```
 
-docker exec -it yb-tserver bash -c "ysqlsh -h yb-tserver"
-
+docker exec -it yb-tserver bash -c "ysqlsh -h yb-tserver<<EOF
 INSERT INTO demo VALUES (1, 'Vaibhav', 'foo@bar.com');
+\q
+EOF"
 
 ```
 
 ---
 
-### Step 8 - verify data in CDC sinks, Postgres, MySQL, Elastic
+### Step 8 - verify data in CDC sinks, Postgres, MySQL (under progress), Elastic
 
 ```
 
-docker exec -it pg sh -c "psql -U postgres postgres
-
+docker exec -it pg sh -c "psql -U postgres postgres<<EOF
 select * from demo ;
+\q
+EOF"
 
 ```
 
@@ -112,7 +115,7 @@ select * from demo ;
 
 docker exec -it mysql sh -c "mysql -u root -pdebezium mysql"
 
-select * from test;
+select * from demo;
 
 ```
 
